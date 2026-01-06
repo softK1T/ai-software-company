@@ -38,7 +38,9 @@ class ProjectTemplateResponse(ProjectTemplateCreate):
     """Project template response."""
     id: str
     created_at: datetime
-    updated_at: datetime
+    updated_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ProjectTemplateListResponse(BaseModel):
@@ -128,7 +130,7 @@ class ProjectResponse(BaseModel):
     template_id: Optional[str]
     active_run_id: Optional[str]
     created_at: datetime
-    updated_at: datetime
+    updated_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -156,11 +158,10 @@ class ProjectRunResponse(BaseModel):
     status: str
     started_at: Optional[datetime]
     ended_at: Optional[datetime]
-    budget_spent_input_tokens: int
-    budget_spent_output_tokens: int
-    budget_spent_usd_estimate: float
+    budget_spent_usd: float = Field(alias="budget_spent_usd")
+    tokens_used: int = Field(alias="tokens_used")
     final_report: Optional[Dict[str, Any]]
-    created_at: datetime
+    created_at: Optional[datetime] = None # ProjectRun doesn't have created_at, uses started_at
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -175,7 +176,7 @@ class TaskCreate(BaseModel):
     parent_task_id: Optional[str] = None
     title: str = Field(..., min_length=5, max_length=255)
     description: Optional[str] = Field(None, max_length=5000)
-    task_type: str = Field("FEATURE")
+    task_type: str = Field("PLANNING")
     priority: int = Field(5, ge=0, le=10)
     dependencies: List[str] = Field(default_factory=list)
     acceptance_criteria: List[str] = Field(default_factory=list)
@@ -253,7 +254,9 @@ class TaskCommentResponse(TaskCommentCreate):
     id: str
     task_id: str
     created_at: datetime
-    updated_at: datetime
+    updated_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TaskCommentListResponse(BaseModel):
