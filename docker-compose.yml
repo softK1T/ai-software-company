@@ -9,7 +9,7 @@ services:
       POSTGRES_PASSWORD: dev_password_change_in_prod
       POSTGRES_DB: aicompany
     ports:
-      - "5432:5432"
+      - "5435:5432"  # Changed host port to 5435 to avoid conflict with local Postgres
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
