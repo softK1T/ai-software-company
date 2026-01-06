@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.database import init_db
 from app.core import seed
 from app.core.database import SessionLocal
-from app.api import templates, projects
+from app.api import templates, projects, runs, tasks
 
 logging.basicConfig(
     level=logging.INFO,
@@ -51,6 +51,8 @@ app.add_middleware(
 # Include routers
 app.include_router(templates.router)
 app.include_router(projects.router)
+app.include_router(runs.router)
+app.include_router(tasks.router)
 
 @app.get("/health")
 async def health_check():
