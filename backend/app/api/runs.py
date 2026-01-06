@@ -1,9 +1,13 @@
+# ... (imports)
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from uuid import uuid4
 from app.core.database import get_db
 from app.core.models import ProjectRun, Project
 from app.core.schemas import ProjectRunCreate, ProjectRunResponse
+# NEW: Import for PM kickoff
+from app.core.models import Task
+from app.worker.tasks import execute_agent_task
 
 router = APIRouter(prefix="/api/runs", tags=["Runs"])
 
@@ -13,18 +17,15 @@ async def create_run(
     run_in: ProjectRunCreate,
     db: Session = Depends(get_db)
 ):
-    """Start a new run for a project."""
+    """Start a new run and trigger PM Planning."""
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
         
-    # Calculate run number
     last_run = db.query(ProjectRun).filter(ProjectRun.project_id == project_id)\
                  .order_by(ProjectRun.run_number.desc()).first()
     next_run_number = (last_run.run_number + 1) if last_run else 1
     
-    # Merge configs (Template + Project overrides + Run overrides)
-    # This is a simplified logic, real implementation needs deep merge
     final_config = {} 
     if project.template:
         final_config.update(project.template.config_patch or {})
@@ -43,9 +44,24 @@ async def create_run(
     db.commit()
     db.refresh(new_run)
     
-    # Update active run
     project.active_run_id = new_run.id
     db.commit()
+    
+    # NEW: Create Initial Planning Task for PM Agent
+    pm_task = Task(
+        id=uuid4(),
+        project_run_id=new_run.id,
+        title="Initial Project Planning",
+        description=f"Analyze requirements for project '{project.name}' and decompose into development tasks.\n\nRequirements:\n{project.requirements_text}",
+        task_type="PLANNING",
+        priority=0,
+        status="PENDING"
+    )
+    db.add(pm_task)
+    db.commit()
+    
+    # Trigger execution
+    execute_agent_task.delay(str(pm_task.id), str(new_run.id))
     
     return new_run
 
