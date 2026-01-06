@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: aicompany-db
+    environment:
+      POSTGRES_USER: aicompany
+      POSTGRES_PASSWORD: dev_password_change_in_prod
+      POSTGRES_DB: aicompany
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aicompany"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - aicompany-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: aicompany-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://aicompany:dev_password_change_in_prod@db:5432/aicompany
+      - ENVIRONMENT=development
+    volumes:
+      - ./backend:/app
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - aicompany-network
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: aicompany-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - aicompany-network
+
+networks:
+  aicompany-network:
+    driver: bridge
+
+volumes:
+  postgres_data:

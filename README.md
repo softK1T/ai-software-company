@@ -1,155 +1,219 @@
-# AI Software Company Platform
+# 🤖 AI Software Company Platform
 
-**Production-grade multi-agent AI platform for autonomous software company simulation**
+> **Phase 1: Core Infrastructure** ✅ Complete
 
-A sophisticated orchestration system where AI agents collaboratively design, develop, test, document, deploy, and secure software projects in real-time.
+An autonomous platform where AI agents build entire software projects from requirements to deployment.
 
-## 🎯 Core Features
+## 🎯 What is This?
 
-- **Multi-Agent Orchestration**: PM, Dev Lead, Developers, QA, Docs, DevOps, Security Specialist
-- **Project Templates**: MVP Fast, Startup Team, API Quality-First, Full-Stack App, Enterprise Strict
-- **LangGraph State Machine**: Configurable workflows with conditional routing
-- **GitHub Integration**: Native Git operations, branch management, PR workflows
-- **Real-time Dashboard**: WebSocket-powered task tracking and comment feeds
-- **Budget Enforcement**: Token tracking, cost estimation, graceful degradation
-- **Security-First**: SAST, DAST, dependency scanning, secret detection
-- **Comprehensive Audit Trail**: Every agent action recorded with full context
+Describe your project idea, and a team of AI agents will:
+- Decompose requirements into tasks
+- Write code, tests, and documentation
+- Create Docker configurations
+- Set up CI/CD pipelines
+- Review each other's work
+- Deploy to production
 
-## 📊 Phase 1: Core Infrastructure (Current)
+## 🏗️ Architecture
 
-✅ SQLAlchemy ORM models with full data schema  
-✅ Pydantic schemas for type safety  
-✅ FastAPI endpoints (templates, projects, runs, tasks, comments)  
-✅ PostgreSQL migrations  
-✅ Project templates (5 presets)  
-✅ Redis event publishing  
-✅ Environment configuration  
+```
+┌─────────────┐      ┌──────────────┐      ┌───────────────┐
+│   React     │─────▶│   FastAPI    │─────▶│  PostgreSQL   │
+│  Frontend   │      │   Backend    │      │   Database    │
+└─────────────┘      └──────────────┘      └───────────────┘
+     (Port 80)            (Port 8000)           (Port 5432)
+```
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 - Docker & Docker Compose
-- Python 3.11+
-- Node.js 18+
-- GitHub App credentials
-- OpenAI API key
+- Git
 
-### Setup
+### 1. Clone and Start
 
 ```bash
-# Clone repository
 git clone https://github.com/softK1T/ai-software-company.git
 cd ai-software-company
+git checkout phase-1-core-infrastructure
 
-# Create environment file
-cp .env.example .env
-# Edit .env with your credentials
-
-# Start services
+# Start all services
 docker-compose up -d
 
-# Run migrations
-docker-compose exec backend alembic upgrade head
+# Wait for services to initialize (30 seconds)
+sleep 30
 
-# Seed templates
-docker-compose exec backend python scripts/seed_templates.py
-
-# Access
-# Frontend: http://localhost:3000
-# API Docs: http://localhost:8000/docs
-# PgAdmin: http://localhost:5050 (email: admin@example.com, password: admin)
+# Check health
+curl http://localhost:8000/health
 ```
 
-## 📁 Project Structure
+### 2. Access the Platform
 
+- **Frontend**: http://localhost
+- **Backend API**: http://localhost:8000
+- **API Docs**: http://localhost:8000/docs
+- **Database**: `localhost:5432` (user: `aicompany`, password: `dev_password_change_in_prod`)
+
+### 3. Run Seed Data (Optional)
+
+The platform automatically seeds 3 default templates on startup:
+- **MVP Fast Track** - Quick prototyping
+- **Standard Web App** - Production-grade applications  
+- **Data Pipeline** - ETL/ELT projects
+
+To re-run manually:
+```bash
+docker-compose exec backend python -m app.core.seed
 ```
-ai-software-company/
+
+## 📚 API Examples
+
+### List Templates
+```bash
+curl http://localhost:8000/api/templates
+```
+
+### Create a Project
+```bash
+curl -X POST http://localhost:8000/api/projects \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "my-rest-api",
+    "description": "User management API",
+    "requirements_text": "Build a REST API with:\n- User CRUD operations\n- JWT authentication\n- PostgreSQL database\n- Docker deployment"
+  }'
+```
+
+### Get Projects
+```bash
+curl http://localhost:8000/api/projects
+```
+
+## 🛠️ Development
+
+### Project Structure
+```
+.
 ├── backend/
 │   ├── app/
-│   │   ├── main.py                 # FastAPI app
-│   │   ├── config.py               # Settings
-│   │   ├── api/                    # Endpoints
-│   │   ├── core/                   # ORM models, schemas, database
-│   │   ├── agents/                 # Agent logic
-│   │   ├── workflow/               # LangGraph workflow
-│   │   ├── github/                 # GitHub integration
-│   │   └── utils/                  # Utilities
-│   ├── workers/                    # Celery tasks
-│   ├── migrations/                 # Alembic
-│   ├── tests/
+│   │   ├── api/          # API endpoints
+│   │   ├── core/         # Models, database, config
+│   │   └── main.py       # FastAPI app
 │   ├── Dockerfile
-│   ├── requirements.txt
-│   └── .env.example
+│   └── requirements.txt
 ├── frontend/
-│   ├── pages/
-│   ├── components/
-│   ├── hooks/
-│   ├── package.json
-│   └── tsconfig.json
-├── infra/
-│   ├── docker-compose.yml
-│   └── k8s/
-├── docs/
-│   ├── ARCHITECTURE.md
-│   ├── API.md
-│   └── SETUP.md
-└── scripts/
-    └── seed_templates.py
+│   ├── src/
+│   │   ├── api/          # API client
+│   │   ├── pages/        # React pages
+│   │   └── App.tsx
+│   ├── Dockerfile
+│   └── package.json
+├── docker-compose.yml
+└── README.md
 ```
 
-## 🔧 Configuration
+### Backend Development
+```bash
+cd backend
+pip install -r requirements.txt
+uvicorn app.main:app --reload
+```
 
-### Project Templates
+### Frontend Development
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-Templates control team composition, task count, review cycles, quality gates, and model allocation:
+### Database Migrations
+```bash
+# Connect to database
+docker-compose exec db psql -U aicompany -d aicompany
 
-- **MVP Fast**: 3 agents, 20 tasks, minimal tests, quick turnaround
-- **Startup Team**: 6 agents, 40 tasks, balanced quality/speed
-- **API Quality-First**: 7 agents, 50 tasks, 80%+ coverage, strict security
-- **Full-Stack App**: 8 agents, 70 tasks, UI + API + infra
-- **Enterprise Strict**: 9 agents, 100 tasks, 85%+ coverage, all security gates
+# List tables
+\dt
 
-See `scripts/seed_templates.py` for full template specifications.
+# Describe table
+\d project_templates
+```
 
-## 🔐 Security
+## 🧪 Testing
 
-- **GitHub App**: Minimal scopes, per-installation authentication
-- **Environment Variables**: All secrets via `.env`, never committed
-- **Audit Trail**: All actions timestamped and attributed
-- **Security Specialist**: Automated SAST, DAST, dependency and secret scanning
-- **SQL Injection Prevention**: Parameterized queries via SQLAlchemy ORM
+### Backend Tests
+```bash
+docker-compose exec backend pytest
+```
 
-## 📖 Documentation
+### API Testing with HTTPie
+```bash
+# Install httpie
+pip install httpie
 
-- [ARCHITECTURE.md](docs/ARCHITECTURE.md) - System design and data flow
-- [API.md](docs/API.md) - Complete API reference
-- [SETUP.md](docs/SETUP.md) - Detailed setup and troubleshooting
+# Test endpoints
+http :8000/health
+http :8000/api/templates
+```
 
-## 📦 Stack
+## 📊 Phase 1 Features
 
-**Backend**: Python 3.11+, FastAPI, SQLAlchemy 2.0, Pydantic v2  
-**Orchestration**: LangGraph, Celery, Redis  
-**Database**: PostgreSQL 14+, Alembic  
-**Frontend**: Next.js, React, TypeScript, WebSocket  
-**DevOps**: Docker, Docker Compose  
-**Git**: GitPython, GitHub REST API  
+✅ **Core Infrastructure**
+- PostgreSQL database with SQLAlchemy ORM
+- FastAPI REST API with auto-generated docs
+- React + TypeScript frontend with Tailwind CSS
+- Docker Compose orchestration
+- CORS configuration
+- Health check endpoints
 
-## 🗺️ Roadmap
+✅ **Data Models**
+- Project Templates (MVP, Standard, Data Pipeline)
+- Projects
+- Project Runs
+- Tasks (hierarchical)
+- Task Comments (audit trail)
+- Artifacts
 
-- **Phase 1** ✅ Core infrastructure, models, endpoints
-- **Phase 2** 🔄 Agent implementations, GitHub integration, Celery
-- **Phase 3** ⏳ Frontend dashboard, WebSocket realtime, advanced monitoring
-- **Phase 4** ⏳ Kubernetes, advanced security, cost optimization
+✅ **API Endpoints**
+- `GET /api/templates` - List all templates
+- `POST /api/templates` - Create template
+- `GET /api/projects` - List projects
+- `POST /api/projects` - Create project
+- `GET /health` - Health check
+
+✅ **Frontend Pages**
+- Templates list with filtering
+- Project creation form
+- Responsive design
+
+## 🔮 Next Steps (Phase 2)
+
+- [ ] AI Agent System (PM, Lead Dev, Dev, QA, DevOps, Security)
+- [ ] LLM Integration (OpenAI/Anthropic)
+- [ ] Task Decomposition Engine
+- [ ] Code Generation Pipeline
+- [ ] GitHub Integration
+- [ ] Real-time Progress Tracking
+- [ ] Budget Management
 
 ## 🤝 Contributing
 
-Branch strategy: `feature/{task_id}-{slug}` for features, `bugfix/{issue_id}-{slug}` for bugs.  
-All PRs require code review and passing tests.
+Contributions are welcome! Please:
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit changes (`git commit -m 'Add amazing feature'`)
+4. Push to branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-## 📄 License
+## 📝 License
 
-MIT License - See LICENSE file for details
+MIT License - see LICENSE file for details
 
-## 📧 Contact
+## 👨‍💻 Author
 
-For questions or contributions, open an issue or PR on GitHub.
+**Nazar Zhyliuk** ([@softK1T](https://github.com/softK1T))
+
+Data Engineer building the future of autonomous software development.
+
+---
+
+**Current Status**: Phase 1 Complete ✅ | Next: Phase 2 - AI Agent System 🚀
