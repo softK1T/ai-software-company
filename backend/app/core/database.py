@@ -1,6 +1,6 @@
 """Database engine and session management."""
 from sqlalchemy import create_engine, event
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import sessionmaker, Session, declarative_base
 from sqlalchemy.pool import NullPool
 from contextlib import contextmanager
 from typing import Generator
@@ -25,6 +25,8 @@ SessionLocal = sessionmaker(
     expire_on_commit=False,
 )
 
+# Declarative Base for models
+Base = declarative_base()
 
 def get_db() -> Generator[Session, None, None]:
     """Dependency for FastAPI to get DB session."""
@@ -56,13 +58,13 @@ if "sqlite" in settings.database_url:
 
 def init_db():
     """Initialize database (create all tables)."""
-    from app.core.models import Base
+    # Import all models here to ensure they are registered with Base
+    # import app.core.models  # noqa: F401
     Base.metadata.create_all(bind=engine)
     logger.info("Database initialized")
 
 
 def drop_db():
     """Drop all tables (for testing)."""
-    from app.core.models import Base
     Base.metadata.drop_all(bind=engine)
     logger.info("Database dropped")
