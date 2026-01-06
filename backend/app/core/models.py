@@ -1,261 +1,250 @@
-"""SQLAlchemy ORM models for AI Software Company Platform."""
-from sqlalchemy import (
-    Column, String, Text, Integer, Float, Boolean, DateTime, ForeignKey,
-    Enum, JSONB, ARRAY, Index, UniqueConstraint, CheckConstraint, func
-)
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship
-from uuid import uuid4
 from datetime import datetime
-import enum
+from enum import Enum
+from typing import Optional, List, Any
+import uuid
 
-Base = declarative_base()
+from sqlalchemy import (
+    Column, 
+    String, 
+    Boolean, 
+    DateTime, 
+    ForeignKey, 
+    Integer, 
+    Text, 
+    Enum as SQLEnum,
+    ARRAY,
+    Float
+)
+from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
 
+from .database import Base
 
-class ProjectStatus(str, enum.Enum):
-    """Project lifecycle states."""
+# Enums
+class ProjectStatus(str, Enum):
     DRAFT = "DRAFT"
     READY = "READY"
     RUNNING = "RUNNING"
     COMPLETED = "COMPLETED"
     FAILED = "FAILED"
-    PAUSED = "PAUSED"
-
-
-class ProjectRunStatus(str, enum.Enum):
-    """Run execution states."""
-    QUEUED = "QUEUED"
-    RUNNING = "RUNNING"
-    COMPLETED = "COMPLETED"
-    FAILED = "FAILED"
     STOPPED_BUDGET = "STOPPED_BUDGET"
     STOPPED_MANUAL = "STOPPED_MANUAL"
+    PAUSED = "PAUSED"
 
+class ProjectRunStatus(str, Enum):
+    STARTING = "STARTING"
+    ACTIVE = "ACTIVE"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
+    STOPPED = "STOPPED"
 
-class TaskStatus(str, enum.Enum):
-    """Task execution states."""
+class TaskStatus(str, Enum):
     PENDING = "PENDING"
     IN_PROGRESS = "IN_PROGRESS"
-    BLOCKED = "BLOCKED"
     REVIEW = "REVIEW"
     DONE = "DONE"
+    BLOCKED = "BLOCKED"
     FAILED = "FAILED"
 
-
-class TaskType(str, enum.Enum):
-    """Task categories."""
-    FEATURE = "FEATURE"
-    BUGFIX = "BUGFIX"
-    REFACTOR = "REFACTOR"
-    TEST = "TEST"
-    DOCS = "DOCS"
+class TaskType(str, Enum):
+    PLANNING = "PLANNING"
+    CODING = "CODING"
+    TESTING = "TESTING"
+    REVIEW = "REVIEW"
     DEVOPS = "DEVOPS"
+    DOCUMENTATION = "DOCUMENTATION"
     SECURITY = "SECURITY"
-    CHORE = "CHORE"
 
-
-class CommentType(str, enum.Enum):
-    """Task comment classifications."""
-    STATUS_UPDATE = "STATUS_UPDATE"
+class CommentType(str, Enum):
     PROGRESS = "PROGRESS"
+    BLOCKER = "BLOCKER"
+    REVIEW = "REVIEW"
     DECISION = "DECISION"
-    BLOCKED = "BLOCKED"
-    CODE_REVIEW = "CODE_REVIEW"
-    TEST_REPORT = "TEST_REPORT"
-    BUG_FOUND = "BUG_FOUND"
-    SECURITY_REVIEW = "SECURITY_REVIEW"
-    COMPLETED = "COMPLETED"
-    QUESTION = "QUESTION"
-    ANSWER = "ANSWER"
-
-
-class ArtifactType(str, enum.Enum):
-    """Artifact categories."""
-    CODE = "CODE"
-    TEST = "TEST"
-    DOCS = "DOCS"
-    CONFIG = "CONFIG"
-    DOCKERFILE = "DOCKERFILE"
-    MANIFEST = "MANIFEST"
-    REPORT = "REPORT"
-
-
-class Project(Base):
-    """Represents a software project."""
-    __tablename__ = "projects"
-
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid4()))
-    name = Column(String(255), nullable=False, unique=True, index=True)
-    description = Column(Text, nullable=True)
-    requirements_text = Column(Text, nullable=True)
-    status = Column(Enum(ProjectStatus), nullable=False, default=ProjectStatus.DRAFT, index=True)
-    template_id = Column(String(36), ForeignKey("project_templates.id"), nullable=True)
-    active_run_id = Column(String(36), ForeignKey("project_runs.id"), nullable=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    # Relationships
-    runs = relationship("ProjectRun", back_populates="project", foreign_keys="ProjectRun.project_id")
-    template = relationship("ProjectTemplate", foreign_keys=[template_id])
-
-    __table_args__ = (
-        Index("idx_project_status_created", "status", "created_at"),
-    )
-
-
-class ProjectRun(Base):
-    """Represents a single execution of a project."""
-    __tablename__ = "project_runs"
-
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid4()))
-    project_id = Column(String(36), ForeignKey("projects.id"), nullable=False, index=True)
-    run_number = Column(Integer, nullable=False)
-    config_snapshot = Column(JSONB, nullable=False)  # Immutable ProjectConfig copy
-    status = Column(Enum(ProjectRunStatus), nullable=False, default=ProjectRunStatus.QUEUED, index=True)
-    started_at = Column(DateTime, nullable=True)
-    ended_at = Column(DateTime, nullable=True)
-    budget_spent_input_tokens = Column(Integer, nullable=False, default=0)
-    budget_spent_output_tokens = Column(Integer, nullable=False, default=0)
-    budget_spent_usd_estimate = Column(Float, nullable=False, default=0.0)
-    final_report = Column(JSONB, nullable=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
-
-    # Relationships
-    project = relationship("Project", back_populates="runs", foreign_keys=[project_id])
-    tasks = relationship("Task", back_populates="run")
-
-    __table_args__ = (
-        UniqueConstraint("project_id", "run_number", name="uq_project_run_number"),
-        Index("idx_run_status_created", "status", "created_at"),
-    )
-
+    SYSTEM = "SYSTEM"
 
 class ProjectTemplate(Base):
-    """Preset project configurations (immutable, versioned)."""
     __tablename__ = "project_templates"
 
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid4()))
-    name = Column(String(255), nullable=False, index=True)
-    version = Column(String(20), nullable=False)  # semver
-    description = Column(Text, nullable=True)
-    tags = Column(ARRAY(String(50)), nullable=False, default=[])
-    config_patch = Column(JSONB, nullable=False)  # Partial ProjectConfig overlay
-    is_system = Column(Boolean, nullable=False, default=False, index=True)
-    created_by_user_id = Column(String(36), nullable=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String, nullable=False)
+    version = Column(String, nullable=False)  # semver
+    description = Column(Text)
+    tags = Column(ARRAY(String))
+    
+    # Configuration override to apply on top of default
+    config_patch = Column(JSONB, default=dict)
+    
+    is_system = Column(Boolean, default=False)
+    created_by_user_id = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
-    __table_args__ = (
-        UniqueConstraint("name", "version", name="uq_template_name_version"),
-        Index("idx_template_is_system_created", "is_system", "created_at"),
-    )
+    projects = relationship("Project", back_populates="template")
 
+class Project(Base):
+    __tablename__ = "projects"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String, unique=True, nullable=False)
+    description = Column(Text)
+    requirements_text = Column(Text)
+    
+    status = Column(SQLEnum(ProjectStatus), default=ProjectStatus.DRAFT)
+    
+    template_id = Column(UUID(as_uuid=True), ForeignKey("project_templates.id"))
+    template = relationship("ProjectTemplate", back_populates="projects")
+    
+    # Active run pointer
+    active_run_id = Column(UUID(as_uuid=True), ForeignKey("project_runs.id"), nullable=True)
+    
+    runs = relationship("ProjectRun", back_populates="project", foreign_keys="[ProjectRun.project_id]")
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+class ProjectRun(Base):
+    __tablename__ = "project_runs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id"))
+    run_number = Column(Integer, nullable=False)
+    
+    # Snapshot of full configuration at start time
+    config_snapshot = Column(JSONB, nullable=False)
+    
+    status = Column(SQLEnum(ProjectRunStatus), default=ProjectRunStatus.STARTING)
+    
+    started_at = Column(DateTime(timezone=True), server_default=func.now())
+    ended_at = Column(DateTime(timezone=True), nullable=True)
+    
+    # Budget tracking
+    budget_spent_usd = Column(Float, default=0.0)
+    tokens_used = Column(Integer, default=0)
+    
+    # Result
+    final_report = Column(JSONB, nullable=True)
+
+    project = relationship("Project", back_populates="runs", foreign_keys=[project_id])
+    tasks = relationship("Task", back_populates="run", cascade="all, delete-orphan")
 
 class Task(Base):
-    """Represents a unit of work within a run."""
     __tablename__ = "tasks"
 
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid4()))
-    project_run_id = Column(String(36), ForeignKey("project_runs.id"), nullable=False, index=True)
-    parent_task_id = Column(String(36), ForeignKey("tasks.id"), nullable=True, index=True)
-    title = Column(String(255), nullable=False)
-    description = Column(Text, nullable=True)
-    task_type = Column(Enum(TaskType), nullable=False, default=TaskType.FEATURE, index=True)
-    status = Column(Enum(TaskStatus), nullable=False, default=TaskStatus.PENDING, index=True)
-    priority = Column(Integer, nullable=False, default=5, index=True)  # 0-10
-    assigned_agent_id = Column(String(100), nullable=True, index=True)  # e.g., "dev_agent_1"
-    dependencies = Column(ARRAY(String(36)), nullable=False, default=[])  # task IDs
-    acceptance_criteria = Column(JSONB, nullable=False, default=[])  # array of strings
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_run_id = Column(UUID(as_uuid=True), ForeignKey("project_runs.id"))
+    
+    # Tree structure
+    parent_task_id = Column(UUID(as_uuid=True), ForeignKey("tasks.id"), nullable=True)
+    subtasks = relationship("Task", backref=relationship("Task", remote_side=[id]))
+    
+    title = Column(String, nullable=False)
+    description = Column(Text)
+    task_type = Column(SQLEnum(TaskType), nullable=False)
+    status = Column(SQLEnum(TaskStatus), default=TaskStatus.PENDING)
+    
+    priority = Column(Integer, default=5) # 0-10
+    
+    # Agent assignment
+    assigned_agent_id = Column(String, nullable=True)
+    
+    # Dependencies (other task IDs)
+    dependencies = Column(ARRAY(UUID(as_uuid=True)), default=list)
+    
+    acceptance_criteria = Column(ARRAY(Text))
+    
     estimate_hours = Column(Float, nullable=True)
     actual_hours = Column(Float, nullable=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
-    started_at = Column(DateTime, nullable=True)
-    completed_at = Column(DateTime, nullable=True)
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
 
-    # Relationships
-    run = relationship("ProjectRun", back_populates="tasks", foreign_keys=[project_run_id])
+    run = relationship("ProjectRun", back_populates="tasks")
     comments = relationship("TaskComment", back_populates="task", cascade="all, delete-orphan")
-    subtasks = relationship("Task", remote_side=[id], foreign_keys=[parent_task_id])
-
-    __table_args__ = (
-        Index("idx_task_status_assigned", "status", "assigned_agent_id"),
-        Index("idx_task_run_priority", "project_run_id", "priority"),
-    )
-
+    artifacts = relationship("Artifact", back_populates="task", cascade="all, delete-orphan")
 
 class TaskComment(Base):
-    """Audit trail: agent actions with full context."""
+    """
+    Audit trail of agent work. Every significant action creates a comment.
+    """
     __tablename__ = "task_comments"
 
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid4()))
-    task_id = Column(String(36), ForeignKey("tasks.id"), nullable=False, index=True)
-    agent_id = Column(String(100), nullable=False, index=True)  # e.g., "dev_agent_1"
-    agent_role = Column(String(100), nullable=False, index=True)  # e.g., "Senior Developer"
-    comment_type = Column(Enum(CommentType), nullable=False, index=True)
-    title = Column(String(255), nullable=False)
-    content = Column(Text, nullable=False)  # Main narrative
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    task_id = Column(UUID(as_uuid=True), ForeignKey("tasks.id"))
+    
+    agent_id = Column(String, nullable=False)
+    agent_role = Column(String, nullable=False)
+    comment_type = Column(SQLEnum(CommentType), default=CommentType.PROGRESS)
+    
+    title = Column(String, nullable=True)
+    content = Column(Text, nullable=False) # Full narrative
+    
+    # Structured Work Log
     work_summary = Column(Text, nullable=True)
     approach = Column(Text, nullable=True)
-    challenges = Column(ARRAY(Text), nullable=False, default=[])
-    solutions = Column(ARRAY(Text), nullable=False, default=[])
-    time_spent_hours = Column(Float, nullable=True)
-    files_created = Column(ARRAY(String(500)), nullable=False, default=[])
-    files_modified = Column(ARRAY(String(500)), nullable=False, default=[])
-    git_commits = Column(ARRAY(String(40)), nullable=False, default=[])  # commit SHAs
-    git_branch = Column(String(255), nullable=True)
-    pr_url = Column(String(500), nullable=True)
-    needs_review = Column(Boolean, nullable=False, default=False)
-    confidence_level = Column(Integer, nullable=True)  # 0-100
-    blockers = Column(ARRAY(Text), nullable=False, default=[])
-    next_steps = Column(ARRAY(Text), nullable=False, default=[])
-    metrics = Column(JSONB, nullable=False, default={})  # {coverage: 75.2, quality_score: 88, ...}
-    vulnerabilities_found = Column(Integer, nullable=False, default=0)
-    critical_issues = Column(ARRAY(Text), nullable=False, default=[])
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    challenges = Column(ARRAY(Text), default=list)
+    solutions = Column(ARRAY(Text), default=list)
+    
+    # Metrics
+    time_spent_hours = Column(Float, default=0.0)
+    files_created = Column(ARRAY(String), default=list)
+    files_modified = Column(ARRAY(String), default=list)
+    
+    # Git
+    git_commits = Column(ARRAY(String), default=list)
+    git_branch = Column(String, nullable=True)
+    pr_url = Column(String, nullable=True)
+    
+    # State
+    needs_review = Column(Boolean, default=False)
+    confidence_level = Column(Integer, default=100) # 0-100
+    
+    blockers = Column(ARRAY(Text), default=list)
+    next_steps = Column(ARRAY(Text), default=list)
+    
+    # JSONB for extra metadata (coverage, lint score, etc)
+    metrics = Column(JSONB, default=dict)
+    
+    # Security findings
+    vulnerabilities_found = Column(Integer, default=0)
+    critical_issues = Column(ARRAY(Text), default=list)
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
-    # Relationships
-    task = relationship("Task", back_populates="comments", foreign_keys=[task_id])
+    task = relationship("Task", back_populates="comments")
     replies = relationship("CommentThreadReply", back_populates="root_comment", cascade="all, delete-orphan")
 
-    __table_args__ = (
-        Index("idx_comment_type_agent", "comment_type", "agent_id"),
-        Index("idx_comment_task_created", "task_id", "created_at"),
-    )
-
-
 class CommentThreadReply(Base):
-    """Threaded replies to task comments."""
+    """Replies to a main comment thread"""
     __tablename__ = "comment_thread_replies"
-
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid4()))
-    root_comment_id = Column(String(36), ForeignKey("task_comments.id"), nullable=False, index=True)
-    task_id = Column(String(36), ForeignKey("tasks.id"), nullable=False, index=True)
-    agent_id = Column(String(100), nullable=False, index=True)
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    root_comment_id = Column(UUID(as_uuid=True), ForeignKey("task_comments.id"))
+    task_id = Column(UUID(as_uuid=True), ForeignKey("tasks.id")) # Denormalized for query speed
+    
+    agent_id = Column(String, nullable=False)
     content = Column(Text, nullable=False)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
-
-    # Relationships
-    root_comment = relationship("TaskComment", back_populates="replies", foreign_keys=[root_comment_id])
-
-    __table_args__ = (
-        Index("idx_reply_root_created", "root_comment_id", "created_at"),
-    )
-
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    root_comment = relationship("TaskComment", back_populates="replies")
 
 class Artifact(Base):
-    """Metadata for generated artifacts (code, tests, docs, configs)."""
+    """Outputs produced by tasks (files, diagrams, etc)"""
     __tablename__ = "artifacts"
-
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid4()))
-    task_id = Column(String(36), ForeignKey("tasks.id"), nullable=False, index=True)
-    artifact_type = Column(Enum(ArtifactType), nullable=False, index=True)
-    file_path = Column(String(500), nullable=False)  # Repo path
-    language = Column(String(50), nullable=True)  # python, javascript, yaml, markdown, etc.
-    git_commit_sha = Column(String(40), nullable=False)  # Commit that created/modified this
-    created_by_agent_id = Column(String(100), nullable=False)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
-
-    __table_args__ = (
-        Index("idx_artifact_task_type", "task_id", "artifact_type"),
-    )
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    task_id = Column(UUID(as_uuid=True), ForeignKey("tasks.id"))
+    
+    artifact_type = Column(String, nullable=False) # code, diagram, document
+    file_path = Column(String, nullable=False)
+    language = Column(String, nullable=True)
+    
+    git_commit_sha = Column(String, nullable=True)
+    
+    created_by_agent_id = Column(String, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    task = relationship("Task", back_populates="artifacts")
