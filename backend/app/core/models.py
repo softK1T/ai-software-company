@@ -95,7 +95,7 @@ class Project(Base):
     template = relationship("ProjectTemplate", back_populates="projects")
     
     # Active run pointer
-    active_run_id = Column(UUID(as_uuid=True), ForeignKey("project_runs.id"), nullable=True)
+    active_run_id = Column(UUID(as_uuid=True), ForeignKey("project_runs.id"), nullable=True, use_alter=True)
     
     runs = relationship("ProjectRun", back_populates="project", foreign_keys="[ProjectRun.project_id]")
     
