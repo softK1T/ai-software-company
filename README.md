@@ -56,10 +56,12 @@ curl http://localhost:8000/health
 
 ### 3. Run Seed Data (Optional)
 
-The platform automatically seeds 3 default templates on startup:
+The platform automatically seeds 5 default templates on startup:
 - **MVP Fast Track** - Quick prototyping
 - **Standard Web App** - Production-grade applications  
 - **Data Pipeline** - ETL/ELT projects
+- **AI Agent Service** - LangChain services
+- **Microservice** - k8s-ready services
 
 To re-run manually:
 ```bash
@@ -96,8 +98,8 @@ curl http://localhost:8000/api/projects
 .
 ├── backend/
 │   ├── app/
-│   │   ├── api/          # API endpoints
-│   │   ├── core/         # Models, database, config
+│   │   ├── api/          # API endpoints (templates, projects, runs, tasks)
+│   │   ├── core/         # Models, database, config, workflow
 │   │   └── main.py       # FastAPI app
 │   ├── Dockerfile
 │   └── requirements.txt
@@ -124,18 +126,6 @@ uvicorn app.main:app --reload
 cd frontend
 npm install
 npm run dev
-```
-
-### Database Migrations
-```bash
-# Connect to database
-docker-compose exec db psql -U aicompany -d aicompany
-
-# List tables
-\dt
-
-# Describe table
-\d project_templates
 ```
 
 ## 🧪 Testing
@@ -166,7 +156,7 @@ http :8000/api/templates
 - Health check endpoints
 
 ✅ **Data Models**
-- Project Templates (MVP, Standard, Data Pipeline)
+- Project Templates (5 system templates)
 - Projects
 - Project Runs
 - Tasks (hierarchical)
@@ -175,15 +165,14 @@ http :8000/api/templates
 
 ✅ **API Endpoints**
 - `GET /api/templates` - List all templates
-- `POST /api/templates` - Create template
-- `GET /api/projects` - List projects
 - `POST /api/projects` - Create project
+- `POST /api/runs` - Start project run
+- `POST /api/tasks` - Manage tasks
 - `GET /health` - Health check
 
-✅ **Frontend Pages**
-- Templates list with filtering
-- Project creation form
-- Responsive design
+✅ **Workflow Engine**
+- `WorkflowEngine` class skeleton
+- `AgentState` definition for LangGraph
 
 ## 🔮 Next Steps (Phase 2)
 
