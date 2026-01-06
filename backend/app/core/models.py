@@ -95,7 +95,8 @@ class Project(Base):
     template = relationship("ProjectTemplate", back_populates="projects")
     
     # Active run pointer
-    active_run_id = Column(UUID(as_uuid=True), ForeignKey("project_runs.id"), nullable=True, use_alter=True)
+    # Fix: use_alter must be inside ForeignKey, not Column
+    active_run_id = Column(UUID(as_uuid=True), ForeignKey("project_runs.id", use_alter=True), nullable=True)
     
     runs = relationship("ProjectRun", back_populates="project", foreign_keys="[ProjectRun.project_id]")
     
@@ -135,7 +136,10 @@ class Task(Base):
     
     # Tree structure
     parent_task_id = Column(UUID(as_uuid=True), ForeignKey("tasks.id"), nullable=True)
-    subtasks = relationship("Task", backref=relationship("Task", remote_side=[id]))
+    
+    # Fix: Explicit relationship definition to avoid "too many values to unpack" error with nested relationship() calls
+    subtasks = relationship("Task", back_populates="parent_task", cascade="all, delete-orphan")
+    parent_task = relationship("Task", remote_side=[id], back_populates="subtasks")
     
     title = Column(String, nullable=False)
     description = Column(Text)
