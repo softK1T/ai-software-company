@@ -17,7 +17,7 @@ aioredis==2.0.1
 
 # GitHub
 PyGithub==2.1.1
-PyJWT==2.8.1
+PyJWT==2.10.1
 
 # LLM & Agents
 langgraph==0.0.20
