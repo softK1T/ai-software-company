@@ -13,7 +13,7 @@ INITIAL_TEMPLATES = [
     {
         "name": "MVP Fast Track",
         "version": "1.0.0",
-        "description": "Rapid prototyping template for validting ideas quickly. Minimal process overhead.",
+        "description": "Rapid prototyping template for validating ideas quickly. Minimal process overhead.",
         "tags": ["mvp", "prototype", "fast"],
         "is_system": True,
         "config_patch": {
@@ -76,6 +76,37 @@ INITIAL_TEMPLATES = [
                 "complexity": "STANDARD",
                 "min_test_coverage": 0.7,
                 "require_docs": True
+            }
+        }
+    },
+    {
+        "name": "AI Agent Service",
+        "version": "1.0.0",
+        "description": "Template for building LLM-based agentic services with LangChain/LangGraph.",
+        "tags": ["ai", "agents", "llm"],
+        "is_system": True,
+        "config_patch": {
+            "team": {
+                "agents_count": 3,
+                "roles_enabled": {"pm": 1, "ai_eng": 1, "dev": 1}
+            },
+            "budget": {
+                "max_usd": 10.0,
+                "max_total_tokens": 500000
+            }
+        }
+    },
+    {
+        "name": "Microservice",
+        "version": "1.0.0",
+        "description": "Lightweight gRPC/REST microservice template with K8s configuration.",
+        "tags": ["backend", "microservice", "k8s"],
+        "is_system": True,
+        "config_patch": {
+            "quality": {
+                "require_k8s": True,
+                "require_docker": True,
+                "min_test_coverage": 0.9
             }
         }
     }
